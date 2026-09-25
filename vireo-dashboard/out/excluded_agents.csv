@@ -1,0 +1,13 @@
+agent_id,tickets,csat_mean,csat_n,handle_med_min,name,team,reason
+A3004,286,2.959016393442623,122,26.0,Siddharth Kapoor,Chat Frontline,hardware_triage_rota
+A3005,279,3.0,111,25.0,Zaid Khanna,Chat Frontline,hardware_triage_rota
+A3006,267,3.0303030303030303,132,27.0,Kavya Pandey,Chat Frontline,hardware_triage_rota
+A3007,261,3.0088495575221237,113,27.0,Siddharth Trivedi,Chat Frontline,hardware_triage_rota
+A3027,424,3.306532663316583,199,1468.0,Harpreet Goyal,Logistics,structural_queue
+A3028,333,3.1241379310344826,145,1463.0,Vivaan Pandey,Logistics,structural_queue
+A3029,326,3.1103896103896105,154,1465.5,Kavya Pandey,Logistics,structural_queue
+A3030,316,3.179856115107914,139,1466.0,Geeta Iyer,Logistics,structural_queue
+A3031,404,3.288659793814433,194,1465.5,Zoya Menon,Logistics,structural_queue
+A3036,246,3.2815533980582523,103,1465.5,Divya Tiwari,Returns Desk,structural_queue
+A3037,542,3.286324786324786,234,1473.0,Mohammed Desai,Returns Desk,structural_queue
+A3038,267,3.1864406779661016,118,1467.0,Varun Reddy,Returns Desk,structural_queue

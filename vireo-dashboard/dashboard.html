@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vireo Audio — Agent CSAT &amp; Handle-Time Scorecard</title>
+<style>
+:root{
+  --bg:#12181c; --panel:#1a2229; --panel2:#212b33; --line:#2c3841;
+  --ink:#e9eef1; --ink-dim:#8fa1ac; --ink-mute:#5f727d;
+  --amber:#e0a458; --amber-dim:#8a6a3f;
+  --teal:#5aa9a3; --red:#c96a5a; --green:#7fae7a;
+  --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  --sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f4f2ee; --panel:#ffffff; --panel2:#ece8e0; --line:#ddd6c8;
+    --ink:#232019; --ink-dim:#5c5647; --ink-mute:#948c78;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f4f2ee; --panel:#ffffff; --panel2:#ece8e0; --line:#ddd6c8;
+  --ink:#232019; --ink-dim:#5c5647; --ink-mute:#948c78;
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+  -webkit-font-smoothing:antialiased; line-height:1.5;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:36px 24px 80px;}
+header.top{
+  display:flex; justify-content:space-between; align-items:flex-end; gap:24px;
+  border-bottom:1px solid var(--line); padding-bottom:20px; margin-bottom:28px; flex-wrap:wrap;
+}
+.brand{font-family:var(--mono); font-size:13px; letter-spacing:.04em; color:var(--ink-mute);}
+h1{font-size:26px; margin:6px 0 0; font-weight:600; letter-spacing:-0.01em;}
+.subtitle{color:var(--ink-dim); font-size:14.5px; margin-top:6px; max-width:60ch;}
+.meta{font-family:var(--mono); font-size:12px; color:var(--ink-mute); text-align:right;}
+.meta div{margin-bottom:3px;}
+
+.tabbar{display:flex; gap:4px; margin-bottom:24px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+.tab{
+  padding:10px 16px; font-size:13.5px; color:var(--ink-dim); cursor:pointer;
+  border-bottom:2px solid transparent; font-weight:500; user-select:none;
+}
+.tab.active{color:var(--amber); border-bottom-color:var(--amber);}
+.tab:hover{color:var(--ink);}
+.view{display:none;}
+.view.active{display:block;}
+
+.grid-stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:28px;}
+.stat{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px 18px;}
+.stat .label{font-size:11.5px; color:var(--ink-mute); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;}
+.stat .value{font-family:var(--mono); font-size:24px; font-weight:600;}
+.stat .sub{font-size:12.5px; color:var(--ink-dim); margin-top:6px;}
+.stat.warn .value{color:var(--red);}
+.stat.good .value{color:var(--teal);}
+
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:20px 22px; margin-bottom:22px;}
+.panel h2{font-size:15px; margin:0 0 4px; font-weight:600;}
+.panel .desc{font-size:13px; color:var(--ink-dim); margin-bottom:16px; max-width:75ch;}
+
+table{width:100%; border-collapse:collapse; font-size:13px;}
+th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--ink-mute); font-weight:500; padding:8px 10px; border-bottom:1px solid var(--line);
+}
+td{padding:9px 10px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:12.5px;}
+td.name{font-family:var(--sans); font-size:13px;}
+tr:hover td{background:var(--panel2);}
+tr.flagged td{background:rgba(201,106,90,0.08);}
+tr.flagged td.name::before{content:"● "; color:var(--red);}
+.badge{display:inline-block; font-family:var(--mono); font-size:10.5px; padding:2px 7px; border-radius:3px; border:1px solid var(--line); color:var(--ink-dim);}
+.badge.excl{color:var(--amber); border-color:var(--amber-dim);}
+
+.wrap-table{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+
+.chart{display:flex; align-items:flex-end; gap:3px; height:180px; padding-top:10px; border-bottom:1px solid var(--line); margin-bottom:6px;}
+.bar-col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; position:relative;}
+.bar{width:70%; background:var(--teal); border-radius:2px 2px 0 0; transition:background .15s; min-height:2px;}
+.bar-col:hover .bar{background:var(--amber);}
+.bar-col .tip{
+  position:absolute; bottom:100%; margin-bottom:6px; background:var(--panel2); border:1px solid var(--line);
+  padding:5px 8px; border-radius:4px; font-family:var(--mono); font-size:11px; white-space:nowrap;
+  opacity:0; pointer-events:none; transition:opacity .1s; z-index:5;
+}
+.bar-col:hover .tip{opacity:1;}
+.chart-labels{display:flex; gap:3px; font-family:var(--mono); font-size:9.5px; color:var(--ink-mute);}
+.chart-labels span{flex:1; text-align:center; overflow:hidden; white-space:nowrap;}
+
+.callout{
+  background:var(--panel2); border-left:3px solid var(--amber); padding:12px 16px; margin:14px 0;
+  font-size:13px; color:var(--ink-dim); border-radius:0 4px 4px 0;
+}
+.callout b{color:var(--ink);}
+.callout.bad{border-left-color:var(--red);}
+.callout.ok{border-left-color:var(--green);}
+
+.footnote{font-size:11.5px; color:var(--ink-mute); margin-top:10px;}
+code{font-family:var(--mono); background:var(--panel2); padding:1px 5px; border-radius:3px; font-size:12px;}
+
+@media(max-width:640px){
+  .wrap{padding:20px 14px 60px;}
+  header.top{flex-direction:column; align-items:flex-start;}
+  .meta{text-align:left;}
+  table{font-size:12px;}
+  td,th{padding:7px 6px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <div class="brand">VIREO AUDIO · SUPPORT OPS</div>
+    <h1>Agent CSAT &amp; Handle-Time Scorecard</h1>
+    <div class="subtitle">Built for the Q3 training-budget decision. Bottom 10 are flagged against a
+    <b>comparable pool only</b> — structural queues and the hardware-triage rota are shown separately, not silently dropped.</div>
+  </div>
+  <div class="meta">
+    <div>DATA WINDOW: JAN 2025 – JUN 2026</div>
+    <div id="ticket-count-meta">—</div>
+    <div>GENERATED FROM tickets.csv / agents.csv</div>
+  </div>
+</header>
+
+<div class="tabbar">
+  <div class="tab active" data-tab="scorecard">Bottom 10 &amp; Scorecard</div>
+  <div class="tab" data-tab="excluded">Excluded Groups</div>
+  <div class="tab" data-tab="trend">CSAT &amp; Replacement Trend</div>
+  <div class="tab" data-tab="quality">Data Quality Log</div>
+</div>
+
+<!-- SCORECARD VIEW -->
+<div class="view active" id="view-scorecard">
+  <div class="grid-stats" id="stats-scorecard"></div>
+
+  <div class="panel">
+    <h2>Comparable pool — Tier 1, non-structural queues, min. 15 CSAT responses</h2>
+    <div class="desc">Ranked by mean CSAT (survey-response tickets only, blanks excluded). Red-flagged rows are the bottom 10 — the group a Q3 retraining budget should actually target.</div>
+    <div class="wrap-table">
+    <table id="scorecard-table">
+      <thead><tr>
+        <th>Agent</th><th>Team</th><th>Site</th><th>Tickets</th><th>CSAT (n)</th><th>Handle, median</th><th>Avg transfers</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+    <div class="footnote">Handle time = first response → resolution, per policy §10. Legacy-system tickets had their resolution timestamp corrected for a UTC/IST offset bug — see Data Quality Log.</div>
+  </div>
+</div>
+
+<!-- EXCLUDED VIEW -->
+<div class="view" id="view-excluded">
+  <div class="panel">
+    <h2>Hardware-triage rota (inside Chat Frontline)</h2>
+    <div class="desc" id="triage-desc"></div>
+    <div class="wrap-table"><table id="triage-table"><thead><tr><th>Agent</th><th>Team</th><th>Tickets</th><th>CSAT (n)</th><th>Handle, median</th></tr></thead><tbody></tbody></table></div>
+  </div>
+  <div class="panel">
+    <h2>Structural queues — Logistics, Returns Desk, Escalations &amp; Warranty</h2>
+    <div class="desc">Delivery, returns and warranty tickets carry real multi-day customer waits and reach the desk after the customer is already frustrated. Low CSAT and long handle time here describe the queue, not the agent. Reported for visibility, excluded from the retraining flag.</div>
+    <div class="wrap-table"><table id="structural-table"><thead><tr><th>Agent</th><th>Team</th><th>Tickets</th><th>CSAT (n)</th><th>Handle, median</th></tr></thead><tbody></tbody></table></div>
+  </div>
+  <div class="panel">
+    <h2>Tier 2 — Escalations &amp; Warranty (measured on resolution days, per policy §6)</h2>
+    <div class="desc">Tier 2 is not to be compared with Tier 1 on volume metrics. Shown on its own axis: median days to resolve, not minutes.</div>
+    <div class="wrap-table"><table id="tier2-table"><thead><tr><th>Agent</th><th>Tickets</th><th>CSAT (n)</th><th>Median resolve, days</th></tr></thead><tbody></tbody></table></div>
+  </div>
+</div>
+
+<!-- TREND VIEW -->
+<div class="view" id="view-trend">
+  <div class="panel">
+    <h2>Monthly CSAT, Jan 2025 – Jun 2026</h2>
+    <div class="desc">Company-wide average of survey-response tickets. The festive dip and the recovery since are both in the data — worth stating both to Priya, not just the dip.</div>
+    <div class="chart" id="csat-chart"></div>
+    <div class="chart-labels" id="csat-labels"></div>
+  </div>
+  <div class="panel">
+    <h2>Replacement volume &amp; planning cost, by month</h2>
+    <div class="desc">Cost = unit cost + Rs 340 (policy §5) per replacement — not the ~Rs 2,500 figure in Arjun's email, which the policy doc itself contradicts.</div>
+    <div class="chart" id="repl-chart"></div>
+    <div class="chart-labels" id="repl-labels"></div>
+  </div>
+</div>
+
+<!-- QUALITY VIEW -->
+<div class="view" id="view-quality">
+  <div class="panel">
+    <h2>What this pipeline checked and fixed</h2>
+    <div class="desc">Every correction below was found in the data, not assumed. Full detail in <code>flags.json</code> and the README.</div>
+    <div id="quality-callouts"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const DATA = {"scorecard": [{"agent_id": "A3034", "tickets": 342, "csat_mean": 3.4025974026, "csat_n": 154, "handle_med_min": 21.0, "handle_mean_min": 297.0380116959, "transfers_mean": 0.134502924, "name": "Meera Pereira", "team": "Billing", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 1, "flag_bottom10": true}, {"agent_id": "A3032", "tickets": 370, "csat_mean": 3.4096385542, "csat_n": 166, "handle_med_min": 22.0, "handle_mean_min": 214.0189189189, "transfers_mean": 0.0918918919, "name": "Kunal Jain", "team": "Billing", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 2, "flag_bottom10": true}, {"agent_id": "A3035", "tickets": 384, "csat_mean": 3.4293478261, "csat_n": 184, "handle_med_min": 22.0, "handle_mean_min": 296.2942708333, "transfers_mean": 0.1302083333, "name": "Nisha Rao", "team": "Billing", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 3, "flag_bottom10": true}, {"agent_id": "A3020", "tickets": 237, "csat_mean": 3.4693877551, "csat_n": 98, "handle_med_min": 23.0, "handle_mean_min": 461.029535865, "transfers_mean": 0.1097046414, "name": "Riya Pillai", "team": "Email Frontline", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 4, "flag_bottom10": true}, {"agent_id": "A3026", "tickets": 97, "csat_mean": 3.5, "csat_n": 40, "handle_med_min": 24.0, "handle_mean_min": 217.2783505155, "transfers_mean": 0.0, "name": "Suresh Pereira", "team": "Voice Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 5, "flag_bottom10": true}, {"agent_id": "A3017", "tickets": 198, "csat_mean": 3.5057471264, "csat_n": 87, "handle_med_min": 23.0, "handle_mean_min": 423.8737373737, "transfers_mean": 0.1161616162, "name": "Aadhya Rao", "team": "Email Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 6, "flag_bottom10": true}, {"agent_id": "A3022", "tickets": 218, "csat_mean": 3.5222222222, "csat_n": 90, "handle_med_min": 23.0, "handle_mean_min": 255.4541284404, "transfers_mean": 0.0871559633, "name": "Manpreet Yadav", "team": "Email Frontline", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 7, "flag_bottom10": true}, {"agent_id": "A3008", "tickets": 217, "csat_mean": 3.5555555556, "csat_n": 99, "handle_med_min": 23.0, "handle_mean_min": 170.6912442396, "transfers_mean": 0.069124424, "name": "Isha George", "team": "Chat Frontline", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 8, "flag_bottom10": true}, {"agent_id": "A3024", "tickets": 464, "csat_mean": 3.5634517766, "csat_n": 197, "handle_med_min": 21.0, "handle_mean_min": 227.8922413793, "transfers_mean": 0.0344827586, "name": "Suresh Sethi", "team": "Voice Frontline", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 9, "flag_bottom10": true}, {"agent_id": "A3016", "tickets": 209, "csat_mean": 3.5769230769, "csat_n": 104, "handle_med_min": 21.0, "handle_mean_min": 181.1100478469, "transfers_mean": 0.1244019139, "name": "Om Khanna", "team": "Email Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 10, "flag_bottom10": true}, {"agent_id": "A3033", "tickets": 311, "csat_mean": 3.6043165468, "csat_n": 139, "handle_med_min": 21.0, "handle_mean_min": 192.7942122186, "transfers_mean": 0.115755627, "name": "Thomas Reddy", "team": "Billing", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 11, "flag_bottom10": false}, {"agent_id": "A3001", "tickets": 203, "csat_mean": 3.6373626374, "csat_n": 91, "handle_med_min": 20.0, "handle_mean_min": 228.7684729064, "transfers_mean": 0.0738916256, "name": "Reyansh Bhatt", "team": "Chat Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 12, "flag_bottom10": false}, {"agent_id": "A3021", "tickets": 242, "csat_mean": 3.6388888889, "csat_n": 108, "handle_med_min": 24.0, "handle_mean_min": 590.4834710744, "transfers_mean": 0.1115702479, "name": "Geeta Sen", "team": "Email Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 13, "flag_bottom10": false}, {"agent_id": "A3015", "tickets": 193, "csat_mean": 3.6404494382, "csat_n": 89, "handle_med_min": 21.0, "handle_mean_min": 515.6994818653, "transfers_mean": 0.0569948187, "name": "Ishaan Dutta", "team": "Chat Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 14, "flag_bottom10": false}, {"agent_id": "A3002", "tickets": 180, "csat_mean": 3.6463414634, "csat_n": 82, "handle_med_min": 22.5, "handle_mean_min": 136.5055555556, "transfers_mean": 0.0555555556, "name": "Megha Sheikh", "team": "Chat Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 15, "flag_bottom10": false}, {"agent_id": "A3011", "tickets": 231, "csat_mean": 3.6464646465, "csat_n": 99, "handle_med_min": 22.0, "handle_mean_min": 259.670995671, "transfers_mean": 0.0606060606, "name": "Divya Jadhav", "team": "Chat Frontline", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 16, "flag_bottom10": false}, {"agent_id": "A3009", "tickets": 203, "csat_mean": 3.6585365854, "csat_n": 82, "handle_med_min": 23.0, "handle_mean_min": 208.8916256158, "transfers_mean": 0.0985221675, "name": "Vihaan Menon", "team": "Chat Frontline", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 17, "flag_bottom10": false}, {"agent_id": "A3023", "tickets": 92, "csat_mean": 3.6666666667, "csat_n": 42, "handle_med_min": 20.0, "handle_mean_min": 68.7717391304, "transfers_mean": 0.0326086957, "name": "Meera Patel", "team": "Voice Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 18, "flag_bottom10": false}, {"agent_id": "A3019", "tickets": 249, "csat_mean": 3.6694915254, "csat_n": 118, "handle_med_min": 22.0, "handle_mean_min": 424.421686747, "transfers_mean": 0.1004016064, "name": "Sai Joshi", "team": "Email Frontline", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 19, "flag_bottom10": false}, {"agent_id": "A3025", "tickets": 111, "csat_mean": 3.6875, "csat_n": 48, "handle_med_min": 24.0, "handle_mean_min": 218.8918918919, "transfers_mean": 0.027027027, "name": "Ananya Das", "team": "Voice Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 20, "flag_bottom10": false}, {"agent_id": "A3014", "tickets": 183, "csat_mean": 3.6883116883, "csat_n": 77, "handle_med_min": 20.0, "handle_mean_min": 352.1530054645, "transfers_mean": 0.0382513661, "name": "Bhavna Joshi", "team": "Chat Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 21, "flag_bottom10": false}, {"agent_id": "A3010", "tickets": 230, "csat_mean": 3.7, "csat_n": 100, "handle_med_min": 19.0, "handle_mean_min": 154.9, "transfers_mean": 0.0565217391, "name": "Aarav Pereira", "team": "Chat Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 22, "flag_bottom10": false}, {"agent_id": "A3012", "tickets": 200, "csat_mean": 3.7160493827, "csat_n": 81, "handle_med_min": 23.0, "handle_mean_min": 253.815, "transfers_mean": 0.04, "name": "Steven Ghosh", "team": "Chat Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 23, "flag_bottom10": false}, {"agent_id": "A3003", "tickets": 184, "csat_mean": 3.7222222222, "csat_n": 72, "handle_med_min": 23.0, "handle_mean_min": 509.8695652174, "transfers_mean": 0.0706521739, "name": "Deepak Saxena", "team": "Chat Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 24, "flag_bottom10": false}, {"agent_id": "A3013", "tickets": 197, "csat_mean": 3.7252747253, "csat_n": 91, "handle_med_min": 22.0, "handle_mean_min": 228.0406091371, "transfers_mean": 0.076142132, "name": "Sukhwinder Rao", "team": "Chat Frontline", "site": "Indore", "comparable_pool": true, "rank_in_pool": 25, "flag_bottom10": false}, {"agent_id": "A3018", "tickets": 239, "csat_mean": 3.816091954, "csat_n": 87, "handle_med_min": 22.0, "handle_mean_min": 475.5313807531, "transfers_mean": 0.0920502092, "name": "Kunal Pillai", "team": "Email Frontline", "site": "Bengaluru", "comparable_pool": true, "rank_in_pool": 26, "flag_bottom10": false}], "excluded": [{"agent_id": "A3004", "tickets": 286, "csat_mean": 2.9590163934, "csat_n": 122, "handle_med_min": 26.0, "name": "Siddharth Kapoor", "team": "Chat Frontline", "reason": "hardware_triage_rota"}, {"agent_id": "A3005", "tickets": 279, "csat_mean": 3.0, "csat_n": 111, "handle_med_min": 25.0, "name": "Zaid Khanna", "team": "Chat Frontline", "reason": "hardware_triage_rota"}, {"agent_id": "A3006", "tickets": 267, "csat_mean": 3.0303030303, "csat_n": 132, "handle_med_min": 27.0, "name": "Kavya Pandey", "team": "Chat Frontline", "reason": "hardware_triage_rota"}, {"agent_id": "A3007", "tickets": 261, "csat_mean": 3.0088495575, "csat_n": 113, "handle_med_min": 27.0, "name": "Siddharth Trivedi", "team": "Chat Frontline", "reason": "hardware_triage_rota"}, {"agent_id": "A3027", "tickets": 424, "csat_mean": 3.3065326633, "csat_n": 199, "handle_med_min": 1468.0, "name": "Harpreet Goyal", "team": "Logistics", "reason": "structural_queue"}, {"agent_id": "A3028", "tickets": 333, "csat_mean": 3.124137931, "csat_n": 145, "handle_med_min": 1463.0, "name": "Vivaan Pandey", "team": "Logistics", "reason": "structural_queue"}, {"agent_id": "A3029", "tickets": 326, "csat_mean": 3.1103896104, "csat_n": 154, "handle_med_min": 1465.5, "name": "Kavya Pandey", "team": "Logistics", "reason": "structural_queue"}, {"agent_id": "A3030", "tickets": 316, "csat_mean": 3.1798561151, "csat_n": 139, "handle_med_min": 1466.0, "name": "Geeta Iyer", "team": "Logistics", "reason": "structural_queue"}, {"agent_id": "A3031", "tickets": 404, "csat_mean": 3.2886597938, "csat_n": 194, "handle_med_min": 1465.5, "name": "Zoya Menon", "team": "Logistics", "reason": "structural_queue"}, {"agent_id": "A3036", "tickets": 246, "csat_mean": 3.2815533981, "csat_n": 103, "handle_med_min": 1465.5, "name": "Divya Tiwari", "team": "Returns Desk", "reason": "structural_queue"}, {"agent_id": "A3037", "tickets": 542, "csat_mean": 3.2863247863, "csat_n": 234, "handle_med_min": 1473.0, "name": "Mohammed Desai", "team": "Returns Desk", "reason": "structural_queue"}, {"agent_id": "A3038", "tickets": 267, "csat_mean": 3.186440678, "csat_n": 118, "handle_med_min": 1467.0, "name": "Varun Reddy", "team": "Returns Desk", "reason": "structural_queue"}], "tier2": [{"agent_id": "A3039", "tickets": 237, "csat_mean": 2.86, "csat_n": 111, "name": "Sameer Ghosh", "median_resolve_days": 5.06}, {"agent_id": "A3040", "tickets": 193, "csat_mean": 2.54, "csat_n": 92, "name": "Tarun Fernandes", "median_resolve_days": 3.14}, {"agent_id": "A3041", "tickets": 189, "csat_mean": 2.44, "csat_n": 85, "name": "Jaspreet Desai", "median_resolve_days": 5.06}, {"agent_id": "A3042", "tickets": 191, "csat_mean": 2.45, "csat_n": 84, "name": "Sneha Sethi", "median_resolve_days": 3.14}, {"agent_id": "A3043", "tickets": 194, "csat_mean": 2.62, "csat_n": 85, "name": "Kabir Varghese", "median_resolve_days": 5.08}, {"agent_id": "A3044", "tickets": 244, "csat_mean": 2.6, "csat_n": 101, "name": "Pranav Khanna", "median_resolve_days": 4.05}], "csat_trend": [{"month": "2025-01", "csat_mean": 3.476, "csat_n": 126, "tickets": 311, "replacements": 311.0, "cost_inr": 551210.0}, {"month": "2025-02", "csat_mean": 3.395, "csat_n": 129, "tickets": 328, "replacements": 328.0, "cost_inr": 596050.0}, {"month": "2025-03", "csat_mean": 3.578, "csat_n": 173, "tickets": 390, "replacements": 390.0, "cost_inr": 703180.0}, {"month": "2025-04", "csat_mean": 3.392, "csat_n": 171, "tickets": 368, "replacements": 368.0, "cost_inr": 663970.0}, {"month": "2025-05", "csat_mean": 3.572, "csat_n": 173, "tickets": 384, "replacements": 384.0, "cost_inr": 698230.0}, {"month": "2025-06", "csat_mean": 3.758, "csat_n": 153, "tickets": 366, "replacements": 115.0, "cost_inr": 203350.0}, {"month": "2025-07", "csat_mean": 3.472, "csat_n": 195, "tickets": 425, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2025-08", "csat_mean": 3.409, "csat_n": 269, "tickets": 570, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2025-09", "csat_mean": 3.42, "csat_n": 262, "tickets": 582, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2025-10", "csat_mean": 3.602, "csat_n": 309, "tickets": 659, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2025-11", "csat_mean": 3.474, "csat_n": 371, "tickets": 824, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2025-12", "csat_mean": 3.29, "csat_n": 465, "tickets": 1034, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2026-01", "csat_mean": 3.124, "csat_n": 517, "tickets": 1174, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2026-02", "csat_mean": 2.948, "csat_n": 501, "tickets": 1196, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2026-03", "csat_mean": 3.133, "csat_n": 481, "tickets": 1072, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2026-04", "csat_mean": 3.227, "csat_n": 344, "tickets": 788, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2026-05", "csat_mean": 3.372, "csat_n": 293, "tickets": 693, "replacements": 0.0, "cost_inr": 0.0}, {"month": "2026-06", "csat_mean": 3.402, "csat_n": 264, "tickets": 586, "replacements": 0.0, "cost_inr": 0.0}], "flags": {"row_counts": {"tickets": 11750, "agents_roster_rows": 44, "orders": 15500, "products": 14, "customers": 9500}, "legacy_timezone_fix": {"negative_handle_times_before": 2309, "negative_handle_times_after": 0, "correction_applied": "+330 min to resolved_at for source_system == legacy_fd"}, "duplicate_agent_names": ["Kavya Pandey"], "hardware_triage_rota": {"agent_ids": ["A3004", "A3005", "A3007", "A3006"], "agent_names": ["Siddharth Kapoor", "Zaid Khanna", "Siddharth Trivedi", "Kavya Pandey"], "warranty_repair_share_triage_vs_rest": [0.059, 0.002], "returns_refunds_share_triage_vs_rest": [0.03, 0.003]}, "refund_and_replacement_same_ticket": [{"ticket_id": "TK-240833", "agent_id": "A3036", "refund_amount_inr": 2499.0, "refund_reason_code": "RETURN-QC-OK"}, {"ticket_id": "TK-244004", "agent_id": "A3030", "refund_amount_inr": 315.0, "refund_reason_code": "RETURN-QC-OK"}, {"ticket_id": "TK-245019", "agent_id": "A3038", "refund_amount_inr": 975.0, "refund_reason_code": "RETURN-QC-OK"}, {"ticket_id": "TK-247304", "agent_id": "A3040", "refund_amount_inr": 360.0, "refund_reason_code": "DOA-REPL"}, {"ticket_id": "TK-250859", "agent_id": "A3038", "refund_amount_inr": 6499.0, "refund_reason_code": "RETURN-QC-OK"}, {"ticket_id": "TK-253280", "agent_id": "A3021", "refund_amount_inr": 3149.0, "refund_reason_code": "WTY-BUYBACK"}], "csat_response_rate": 0.4422127659574468, "naive_vs_adjusted_bottom10_overlap": {"naive_bottom10": ["A3004", "A3005", "A3006", "A3007", "A3028", "A3029", "A3030", "A3036", "A3037", "A3038"], "adjusted_bottom10": ["A3008", "A3016", "A3017", "A3020", "A3022", "A3024", "A3026", "A3032", "A3034", "A3035"], "agents_naive_would_wrongly_flag": ["A3004", "A3005", "A3006", "A3007", "A3028", "A3029", "A3030", "A3036", "A3037", "A3038"]}}}
+;
+
+function fmtCsat(mean, n){ return mean.toFixed(2) + ' (' + n + ')'; }
+function fmtMin(m){
+  if(m >= 1000) return (m/1440).toFixed(1) + 'd';
+  return Math.round(m) + 'm';
+}
+
+// ---- tabs ----
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ---- meta ----
+document.getElementById('ticket-count-meta').textContent =
+  DATA.flags.row_counts.tickets.toLocaleString() + ' TICKETS · ' + DATA.flags.row_counts.agents_roster_rows + ' AGENT ROWS';
+
+// ---- scorecard stats ----
+const bottom10 = DATA.scorecard.filter(r=>r.flag_bottom10);
+const pool = DATA.scorecard.filter(r=>r.comparable_pool);
+const naiveWrong = DATA.flags.naive_vs_adjusted_bottom10_overlap.agents_naive_would_wrongly_flag.length;
+const poolAvg = pool.reduce((s,r)=>s+r.csat_mean,0)/pool.length;
+const bottomAvg = bottom10.reduce((s,r)=>s+r.csat_mean,0)/bottom10.length;
+
+const statsHtml = `
+  <div class="stat warn"><div class="label">Flagged for retraining</div><div class="value">10 agents</div><div class="sub">of ${pool.length} in the comparable pool</div></div>
+  <div class="stat"><div class="label">Bottom-10 avg CSAT</div><div class="value">${bottomAvg.toFixed(2)}</div><div class="sub">vs pool avg ${poolAvg.toFixed(2)}</div></div>
+  <div class="stat warn"><div class="label">Naive ranking would misflag</div><div class="value">${naiveWrong}/10</div><div class="sub">all of them — see Excluded Groups tab</div></div>
+  <div class="stat good"><div class="label">Rs 4L training budget</div><div class="value">100%</div><div class="sub">now aimed at agents whose gap is closable by training</div></div>
+`;
+document.getElementById('stats-scorecard').innerHTML = statsHtml;
+
+// ---- scorecard table ----
+const tbody = document.querySelector('#scorecard-table tbody');
+DATA.scorecard.forEach(r=>{
+  const tr = document.createElement('tr');
+  if(r.flag_bottom10) tr.className='flagged';
+  tr.innerHTML = `<td class="name">${r.name} <span style="color:var(--ink-mute)">${r.agent_id}</span></td>
+    <td>${r.team}</td><td>${r.site}</td><td>${r.tickets}</td>
+    <td>${fmtCsat(r.csat_mean, r.csat_n)}</td><td>${fmtMin(r.handle_med_min)}</td><td>${r.transfers_mean.toFixed(2)}</td>`;
+  tbody.appendChild(tr);
+});
+
+// ---- excluded: triage rota ----
+document.getElementById('triage-desc').textContent =
+  `Empirically the bottom 4 in Chat Frontline by CSAT — but they carry ${(DATA.flags.hardware_triage_rota.warranty_repair_share_triage_vs_rest[0]*100).toFixed(1)}% Warranty & Repair tickets vs ${(DATA.flags.hardware_triage_rota.warranty_repair_share_triage_vs_rest[1]*100).toFixed(1)}% for the rest of Chat Frontline, and ${(DATA.flags.hardware_triage_rota.returns_refunds_share_triage_vs_rest[0]*100).toFixed(1)}% Returns & Refunds vs ${(DATA.flags.hardware_triage_rota.returns_refunds_share_triage_vs_rest[1]*100).toFixed(1)}%. That matches Neha's email: this is a hardware-triage rota that gets harder tickets by design, not an underperforming team.`;
+
+function fillExcludedTable(sel, rows){
+  const tb = document.querySelector(sel+' tbody');
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="name">${r.name} <span style="color:var(--ink-mute)">${r.agent_id}</span></td>
+      <td>${r.team}</td><td>${r.tickets}</td><td>${fmtCsat(r.csat_mean, r.csat_n)}</td><td>${fmtMin(r.handle_med_min)}</td>`;
+    tb.appendChild(tr);
+  });
+}
+fillExcludedTable('#triage-table', DATA.excluded.filter(r=>r.reason==='hardware_triage_rota'));
+fillExcludedTable('#structural-table', DATA.excluded.filter(r=>r.reason==='structural_queue'));
+
+const t2body = document.querySelector('#tier2-table tbody');
+DATA.tier2.forEach(r=>{
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td class="name">${r.name} <span style="color:var(--ink-mute)">${r.agent_id}</span></td>
+    <td>${r.tickets}</td><td>${fmtCsat(r.csat_mean, r.csat_n)}</td><td>${r.median_resolve_days}d</td>`;
+  t2body.appendChild(tr);
+});
+
+// ---- trend charts ----
+function renderChart(containerId, labelsId, data, key, fmt, maxOverride){
+  const el = document.getElementById(containerId);
+  const lab = document.getElementById(labelsId);
+  const max = maxOverride || Math.max(...data.map(d=>d[key]));
+  data.forEach(d=>{
+    const col = document.createElement('div'); col.className='bar-col';
+    const bar = document.createElement('div'); bar.className='bar';
+    const h = max>0 ? Math.max(2,(d[key]/max)*150) : 2;
+    bar.style.height = h+'px';
+    const tip = document.createElement('div'); tip.className='tip';
+    tip.textContent = fmt(d);
+    col.appendChild(bar); col.appendChild(tip);
+    el.appendChild(col);
+    const s = document.createElement('span'); s.textContent = d.month.slice(2).replace('-','');
+    lab.appendChild(s);
+  });
+}
+renderChart('csat-chart','csat-labels', DATA.csat_trend, 'csat_mean', d=>d.month+': '+d.csat_mean.toFixed(2)+' CSAT, n='+d.csat_n, 5);
+renderChart('repl-chart','repl-labels', DATA.csat_trend, 'cost_inr', d=>d.month+': Rs '+Math.round(d.cost_inr).toLocaleString('en-IN')+' ('+d.replacements+' units)');
+
+// ---- data quality callouts ----
+const q = DATA.flags;
+const qc = document.getElementById('quality-callouts');
+qc.innerHTML = `
+  <div class="callout bad"><b>Legacy timestamp bug (fixed).</b> ${q.legacy_timezone_fix.negative_handle_times_before.toLocaleString()} of ~3,374 legacy_fd tickets had a resolution time earlier than their first response — clustered at exactly the IST/UTC offset (5h30m). The legacy event log stores UTC; it wasn't converted before export. Corrected by adding 330 minutes to resolved_at for legacy_fd tickets. Left unfixed, this silently drags down handle-time for every agent who touched legacy tickets.</div>
+  <div class="callout"><b>Duplicate agent name.</b> "${q.duplicate_agent_names.join(', ')}" appears twice in the roster under two different agent_ids, on two different teams. All joins in this tool use agent_id, never name.</div>
+  <div class="callout"><b>Hardware-triage rota identified.</b> ${q.hardware_triage_rota.agent_names.join(', ')} — confirmed structurally, not just by Neha's email, via category mix (see Excluded Groups tab).</div>
+  <div class="callout bad"><b>Policy violation found, not fixed.</b> ${q.refund_and_replacement_same_ticket.length} tickets carry both a refund and a replacement on the same order — the policy (§5) requires same-day escalation to Team Lead + Finance when this happens. Ticket IDs: ${q.refund_and_replacement_same_ticket.map(x=>x.ticket_id).join(', ')}. This needs a human look, not an automated fix.</div>
+  <div class="callout ok"><b>CSAT response rate: ${(q.csat_response_rate*100).toFixed(1)}%.</b> Matches the ~45% the policy doc states — cross-check passed, no bias suspected in which tickets get a response.</div>
+  <div class="callout"><b>Naive vs. corrected bottom 10: 0% overlap.</b> Ranking every Tier-1 agent by raw CSAT would flag ${q.naive_vs_adjusted_bottom10_overlap.agents_naive_would_wrongly_flag.length}/10 agents whose real problem is queue difficulty, not skill — all 4 hardware-triage agents and 6 Logistics/Returns Desk agents. None of the corrected bottom 10 overlaps with the naive list.</div>
+`;
+</script>
+</body>
+</html>

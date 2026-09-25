@@ -1,0 +1,116 @@
+{
+  "row_counts": {
+    "tickets": 11750,
+    "agents_roster_rows": 44,
+    "orders": 15500,
+    "products": 14,
+    "customers": 9500
+  },
+  "legacy_timezone_fix": {
+    "negative_handle_times_before": 2309,
+    "negative_handle_times_after": 0,
+    "correction_applied": "+330 min to resolved_at for source_system == legacy_fd"
+  },
+  "duplicate_agent_names": [
+    "Kavya Pandey"
+  ],
+  "hardware_triage_rota": {
+    "agent_ids": [
+      "A3004",
+      "A3005",
+      "A3007",
+      "A3006"
+    ],
+    "agent_names": [
+      "Siddharth Kapoor",
+      "Zaid Khanna",
+      "Siddharth Trivedi",
+      "Kavya Pandey"
+    ],
+    "warranty_repair_share_triage_vs_rest": [
+      0.059,
+      0.002
+    ],
+    "returns_refunds_share_triage_vs_rest": [
+      0.03,
+      0.003
+    ]
+  },
+  "refund_and_replacement_same_ticket": [
+    {
+      "ticket_id": "TK-240833",
+      "agent_id": "A3036",
+      "refund_amount_inr": 2499.0,
+      "refund_reason_code": "RETURN-QC-OK"
+    },
+    {
+      "ticket_id": "TK-244004",
+      "agent_id": "A3030",
+      "refund_amount_inr": 315.0,
+      "refund_reason_code": "RETURN-QC-OK"
+    },
+    {
+      "ticket_id": "TK-245019",
+      "agent_id": "A3038",
+      "refund_amount_inr": 975.0,
+      "refund_reason_code": "RETURN-QC-OK"
+    },
+    {
+      "ticket_id": "TK-247304",
+      "agent_id": "A3040",
+      "refund_amount_inr": 360.0,
+      "refund_reason_code": "DOA-REPL"
+    },
+    {
+      "ticket_id": "TK-250859",
+      "agent_id": "A3038",
+      "refund_amount_inr": 6499.0,
+      "refund_reason_code": "RETURN-QC-OK"
+    },
+    {
+      "ticket_id": "TK-253280",
+      "agent_id": "A3021",
+      "refund_amount_inr": 3149.0,
+      "refund_reason_code": "WTY-BUYBACK"
+    }
+  ],
+  "csat_response_rate": 0.4422127659574468,
+  "naive_vs_adjusted_bottom10_overlap": {
+    "naive_bottom10": [
+      "A3004",
+      "A3005",
+      "A3006",
+      "A3007",
+      "A3028",
+      "A3029",
+      "A3030",
+      "A3036",
+      "A3037",
+      "A3038"
+    ],
+    "adjusted_bottom10": [
+      "A3008",
+      "A3016",
+      "A3017",
+      "A3020",
+      "A3022",
+      "A3024",
+      "A3026",
+      "A3032",
+      "A3034",
+      "A3035"
+    ],
+    "agents_naive_would_wrongly_flag": [
+      "A3004",
+      "A3005",
+      "A3006",
+      "A3007",
+      "A3028",
+      "A3029",
+      "A3030",
+      "A3036",
+      "A3037",
+      "A3038"
+    ]
+  }
+}
